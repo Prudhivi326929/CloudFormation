@@ -1,0 +1,21 @@
+Parameters:
+    InstanceType:
+        Description: defines the type of instance
+        Type: String
+        Default: t2.micro
+        AllowedValues:
+            - t2.micro
+            - t2.nano
+    KeyName:
+        Description: defines the key pair name
+        Type: AWS::EC2::KeyPair::KeyName
+        ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    
+Resources:
+    MyEC2Instance:
+        Type: "AWS::EC2::Instance"
+        Properties:
+            #we reference the InstanceType parameter
+            InstanceType: !Ref InstanceType
+            KeyName: !Ref KeyName
+            ImageId: "ami-a4c7edb2"
