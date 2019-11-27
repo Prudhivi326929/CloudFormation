@@ -38,7 +38,7 @@ Mappings:
       instanceType: t2.micro
     # we want a bigger instance type in production
     production:
-      instanceType: t2.small
+      instanceType: t2.nano
 
 Resources:
   EC2Instance:
