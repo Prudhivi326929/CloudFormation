@@ -1,0 +1,22 @@
+Parameters:
+    InstanceType:
+        Description: to select instance type
+        Type: String
+        Default: t2.micro
+        AllowedValues:
+            - t2.micro
+            - t2.nano
+
+Resources:
+    MyInstance:
+        Type: AWS::EC2::Instance
+        Properties:
+            InstanceType: !Ref InstanceType
+            ImageId: ami-a4c7edb2
+            Tags:
+                - 
+                    Key: Name
+                    Value: test-instance
+                -
+                    Key: App_ID
+                    Value: 111
