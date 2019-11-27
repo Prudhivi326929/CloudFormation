@@ -1,6 +1,7 @@
 ---
 Resources:
-  MyS3Bucket:
-    Type: "AWS::S3::Bucket"
-    Properties:
-      AccessControl: PublicRead
+    MyS3Bucket:
+        Type: AWS::S3::Bucket
+        Properties:
+            BucketName: "sample-test-cf" #bucket name should not contain upper case
+            AccessControl: PublicRead

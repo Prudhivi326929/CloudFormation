@@ -1,5 +1,6 @@
 ---
 Resources:
-  MyS3Bucket:
-    Type: "AWS::S3::Bucket"
-    Properties: {}
+    MyS3Bucket:
+        Type: AWS::S3::Bucket
+        Properties:
+            BucketName: "sample-test-cf" #bucket name should not contain upper case
