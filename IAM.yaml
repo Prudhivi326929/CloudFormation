@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+    Password:
+        NoEcho: true
+        Type: String
+        MinLength: 1
+        MaxLength: 41
+        ConstraintDescription: password must be between 1 to 41 characters
+Resources:
+    CFNUser:
+        Type: AWS::IAM::User
+        Properties:
+            LoginProfile:
+                Password: !Ref Password
+    CFNUserGroup:
+        Type: AWS::IAM::Group
+    CFNAdminGroup:
+        Type: AWS::IAM::Group
+    Users:
+        Type: AWS::IAM::UserToGroupAddition
+        Properties:
+            GroupName: !Ref CFNUserGroup
+            Users: !Ref CFNUser
+    Admins:
+        Type: AWS::IAM::UserToGroupAddition
+        Properties:
+            GroupName: !Ref CFNAdminGroup
+            Users: !Ref CFNUser
+    CFNUserPolicies:
+        Type: AWS::IAM::Policy
+        Properties:
+            PolicyName: CFNUsers
+            PolicyDocument:
+                Statement:
+                    - Effect: Allow
+                      Action: ['CloudFormation:Describe*','CloudFormation:List*','CloudFormation:Get*']
+                      Resource: '*'
+            Groups: !Ref CFNUserGroup
+    CFNAdminPolicies:
+        Type: AWS::IAM::Policy
+        Properties:
+            PolicyName: CFNAdmins
+            PolicyDocument:
+                Statement:
+                    - Effect: Allow
+                      Action: CloudFormation*
+                      Resource: '*'
+            Groups: !Ref CFNAdminGroup
+    CFNKeys:
+        Type: AWS::IAM::AccessKey
+        Properties:
+            UserName: !Ref CFNUser
+            
+Outputs:
+    AccessKey: 
+        Value: !Ref CFNKeys
+        Description: AWSAccesskey id of new user
+        
+    SecretKey:
+        Value: !GetAtt [CFNKeys, SecretAccessKey]
+        Description: AWSSecret key of new user.
