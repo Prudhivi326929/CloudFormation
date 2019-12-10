@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+ AMIid :
+  Type: String
+  Description: Please Enter the new encrypted AMI id  to proceed with spining up of stack
+Resources:
+ EILJenkinsInstance:
+  Type: AWS::EC2::Instance
+  Properties: 
+   ImageId: 
+     Ref:  AMIid
+   InstanceType: 't3.2xlarge'
+   IamInstanceProfile: 'Era-Radagast'
+   KeyName: 'EIL_CERT_FULL_US_EAST'
+   SubnetId: subnet-8ee648c7
+   SecurityGroupIds:
+     - sg-0e09a562a870f0a02 
+   BlockDeviceMappings: 
+   -
+    DeviceName: /dev/xvda
+    Ebs:
+      VolumeSize: 8
+      VolumeType: gp2
+   - DeviceName: /dev/sdf
+     Ebs:
+      SnapshotId: snap-03834ceba85197268
+      VolumeSize: 100
+      VolumeType: gp2
+   Tags:
+   - Key: APP_ID
+     Value: 1311
+   - Key : Billing
+     Value : DataSolutions/ERAIntegrationLayer
+   - Key : COST_CENTER
+     Value : 40144
+   - Key : Name
+     Value: ERA_EIL_PreProductionJenkinsVM	  
+   UserData:
+    Fn::Base64: 
+      !Sub |
+        #!/bin/bash -xe
+        yum -y update
+        # create mount point directory
+        mkdir /var/lib/jenkins
+        # add an entry to fstab to mount volume during boot
+        echo "/dev/sdf       /var/lib/jenkins   ext4    defaults,nofail 0       0" >> /etc/fstab
+        # mount the volume on current boot
+        mount -a
+Outputs:
+  #InstanceName:
+   # Description: The name of the EC2 Instance
+   # Value: !Ref Name
+  InstanceIP:
+    Description: The Private IP of New  EC2 Jenkins Instance
+    Value:
+      Fn::GetAtt:
+      - EILJenkinsInstance
+      - PrivateIp
+  #InstanceID:
+    #Description: The EC2 Instance ID
+    #Value: !Ref 'EILJenkinsInstance'
