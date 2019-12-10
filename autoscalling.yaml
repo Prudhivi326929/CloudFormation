@@ -1,0 +1,95 @@
+{
+
+"AWSTemplateFormatVersion" : "2010-09-09",
+
+"Description" : "SBP-UAT-API-enc Stack",
+
+"Parameters":{  
+
+		"USeastSBPUATsubnet1":{   
+         "Description":"UAT ELB Subnet in AZ-1(us-east-1a).",
+         "Type":"String",
+         "Default":"subnet-0d8cbe55"
+			},
+		"USeastSBPUATsubnet2":{  
+         "Description":"UAT ELB Subnet in AZ-2(us-east-1d).",
+         "Type":"String",
+         "Default":"subnet-0f947646"
+		 },
+		"ImageId": {
+			"Type": "String",
+			"Default": "ami-0c7fd17ff695dc56e"
+		},	
+		"AvailabilityZone": {
+			"Type": "String",
+			"Default": "us-east-1a"
+		}
+    },
+	
+	
+"Resources" : {
+
+		  
+	"AppLaunchConfiguration": {
+		"Type": "AWS::AutoScaling::LaunchConfiguration",
+		"Properties": {
+			"AssociatePublicIpAddress": false,
+			"ImageId": {
+				"Ref": "ImageId"
+			},
+			"InstanceType": "t2.large",
+			"IamInstanceProfile" : "Sbp-EcsInstance",
+			"KeyName" : "sbpprod",
+			
+			"LaunchConfigurationName" : "sbp-uat-api",
+			"InstanceMonitoring" : true,
+			
+			"SecurityGroups": ["sg-b66484fd"]
+      }
+     },
+	 
+	"AppASG": {
+		"Type": "AWS::AutoScaling::AutoScalingGroup",
+		"Properties": {
+        "AvailabilityZones": [
+          {
+            "Ref": "AvailabilityZone"
+          }
+        ],
+        "DesiredCapacity": 1,
+		
+        "LaunchConfigurationName": {
+          "Ref": "AppLaunchConfiguration"
+        },
+		"MetricsCollection": [
+         {
+            "Granularity": "1Minute",
+            "Metrics": [
+               "GroupMinSize",
+               "GroupMaxSize"
+            ]
+         }
+      ],
+        "MaxSize": 5,
+        "MinSize": 1,
+		"Tags":[  
+               {  
+                  "Key":"Name",
+                  "Value":"SBP-UAT-enc",
+                  "PropagateAtLaunch":"true"
+               }
+            ],
+        "VPCZoneIdentifier": [
+          {
+            "Ref": "USeastSBPUATsubnet1"
+          }
+        ]
+      },
+      "UpdatePolicy": {
+        "AutoScalingRollingUpdate": {
+          "MinInstancesInService": 1
+        }
+      }
+    }
+}
+}
