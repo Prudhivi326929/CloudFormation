@@ -1,0 +1,47 @@
+{
+
+"AWSTemplateFormatVersion" : "2010-09-09",
+
+"Description" : "SBP-PROD-SQS-R3 Stack",
+
+"Resources" : {
+
+	
+	"SBPPRODsqs29":{  
+         "Type":"AWS::SQS::Queue",
+         "Properties":{  
+            "QueueName":"sbpPROD-movementFailoverQueue",
+			"ReceiveMessageWaitTimeSeconds": "5",
+			"DelaySeconds": "60",
+			"MaximumMessageSize": "262144",	  
+			"MessageRetentionPeriod": "345600",
+			"VisibilityTimeout": "2700"
+			
+         }
+      },
+	"SBPPRODsqs30":{  
+         "Type":"AWS::SQS::Queue",
+         "Properties":{  
+            "QueueName":"sbpPROD-movementRequestQueue",
+			"ReceiveMessageWaitTimeSeconds": "0",
+			"DelaySeconds": "0",
+			"MaximumMessageSize": "262144",	  
+			"MessageRetentionPeriod": "345600",
+			"VisibilityTimeout": "2700"
+			
+         }
+      },
+	"SBPPRODsqs31":{  
+         "Type":"AWS::SQS::Queue",
+         "Properties":{  
+            "QueueName":"sbpPROD-movementResponseQueue",
+			"ReceiveMessageWaitTimeSeconds": "0",
+			"DelaySeconds": "0",
+			"MaximumMessageSize": "262144",	  
+			"MessageRetentionPeriod": "345600",
+			"VisibilityTimeout": "2700"
+			
+         }
+      }
+}
+}
