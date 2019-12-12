@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: creating subnet
+Resources:
+    Subnet1:
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: vpc-875502fd
+            CidrBlock: 172.31.100.128/28
+            AvailabilityZone: us-east-1a
+            MapPublicIpOnLaunch: true
+            Tags:
+                -   Key: Name
+                    Value:
+                        !Join
+                            - "-"
+                            -
+                                - "subnet1"
+                                - "prudhii"
+                                - "test"
+                                
+Outputs:
+    SubnetId:
+        Value: !Ref Subnet1
