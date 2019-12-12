@@ -1,0 +1,1550 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: This template creates a SaaS network SaaS environments and exports VPC, Subnet ID's, which can be then used by other resources Stacks.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: saasdev
+    Description: "Which environment is this being deployed to?"
+    AllowedValues:
+      - saasdev
+      - saasqa
+      - saasstaging
+      - saasprod
+    #AllowedPattern: (regex)
+
+  InstanceType:
+    Tye: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - t2.xlarge
+
+  EBSVolumeSize:
+    Tye: String
+    Default: t2.micro
+    AllowedValues:
+      - 30
+      - 40
+      - 50
+      - 60
+
+  DADSProcessingVpc:
+    Type: String
+    Default: vpc-23cdf644
+    Description: "DADS processing vpc id. Caution: need vpc id not name"
+
+  DadsProcessingVpcCIDR:
+    Type: String
+    Default: 10.40.32.0/21
+    Description: "DADS processing CIDR."
+
+  DADSSharedVpc:
+    Type: String
+    Default: vpc-46610121
+    Description: "DADS shared vpc id. Caution: need vpc id not name"
+
+  DadsSharedVpcCIDR:
+    Type: String
+    Default: 10.40.16.0/21
+    Description: "DADS shared CIDR."
+
+  DADSTransitVpc:
+    Type: String
+    Default: vpc-19ce357f
+    Description: "DADS transit vpc id. Caution: need vpc id not name"
+
+  DadsTransitVpcCIDR:
+    Type: String
+    Default: 10.40.56.0/21
+    Description: "DADS transit CIDR."
+
+  TransitVpcSpokeMode:
+    Type: String
+    Default: Primary
+    Description: Define which mode you are provisioning. Default is primary, choose DR if you provisioning for Disaster Recovery.
+    AllowedValues:
+      - Primary
+      - DR
+
+  AWSStackName:
+    Description: Suggested Stack Name that can be used while creating this Stack.
+    Type: String
+    AllowedValues:
+      - stack-saas-saasdev-network
+      - stack-saas-saasqa-network
+      - stack-saas-saasstaging-network
+      - stack-saas-saasprod-network
+    Default: stack-saas-saasdev-network     user input
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: AWS Stack Name
+        Parameters:
+          - AWSStackName
+    ParameterLabels:
+      AWSStackName:
+        default: Suggested Stack Name (Optional)
+
+Mappings:
+  regionMap:
+    us-east-1:
+      AvailabilityZone1: us-east-1a
+      AvailabilityZone2: us-east-1b
+
+
+  saasdev:
+    us-east-1:
+      AppVpcCIDR: 10.40.64.0/24
+      AppPrivateSubnet1: 10.40.64.0/26
+      AppPrivateSubnet2: 10.40.64.64/26
+      AppPublicSubnet1: 10.40.64.128/26
+      AppPublicSubnet2: 10.40.64.192/26
+      xxxAppVpcASN: 4213979001
+      AppVpcASN: 7224
+      DataVpcCIDR: 10.40.65.0/24
+      DataPrivateSubnet1: 10.40.65.0/26
+      DataPrivateSubnet2: 10.40.65.64/26
+      DataPublicSubnet1: 10.40.65.128/26
+      DataPublicSubnet2: 10.40.65.192/26
+      xxxDataVpcASN: 4213979002
+      DataVpcASN: 7224
+
+  saasqa:
+    us-east-1:
+      AppVpcCIDR: 10.40.66.0/24
+      AppPrivateSubnet1: 10.40.66.0/26
+      AppPrivateSubnet2: 10.40.66.64/26
+      AppPublicSubnet1: 10.40.66.128/26
+      AppPublicSubnet2: 10.40.66.192/26
+      xxxAppVpcASN: 4213979003
+      AppVpcASN: 7224
+      DataVpcCIDR: 10.40.67.0/24
+      DataPrivateSubnet1: 10.40.67.0/26
+      DataPrivateSubnet2: 10.40.67.64/26
+      DataPublicSubnet1: 10.40.67.128/26
+      DataPublicSubnet2: 10.40.67.192/26
+      xxxDataVpcASN: 4213979004
+      DataVpcASN: 7224
+
+  saasstaging:
+    us-east-1:
+      AppVpcCIDR: 10.40.72.0/22
+      AppPrivateSubnet1: 10.40.72.0/24
+      AppPrivateSubnet2: 10.40.73.0/24
+      AppPublicSubnet1: 10.40.74.0/24
+      AppPublicSubnet2: 10.40.75.0/24
+      xxxAppVpcASN: 4213979005
+      AppVpcASN: 7224
+      DataVpcCIDR: 10.40.76.0/22
+      DataPrivateSubnet1: 10.40.76.0/24
+      DataPrivateSubnet2: 10.40.77.0/24
+      DataPublicSubnet1: 10.40.78.0/24
+      DataPublicSubnet2: 10.40.79.0/24
+      xxxDataVpcASN: 4213979006
+      DataVpcASN: 7224
+      
+  saasprod:
+    us-east-1:
+      AppVpcCIDR: 10.40.80.0/22
+      AppPrivateSubnet1: 10.40.80.0/24
+      AppPrivateSubnet2: 10.40.81.0/24
+      AppPublicSubnet1: 10.40.82.0/24
+      AppPublicSubnet2: 10.40.83.0/24
+      xxxAppVpcASN: 4213979007
+      AppVpcASN: 7224
+      DataVpcCIDR: 10.40.84.0/22
+      DataPrivateSubnet1: 10.40.84.0/24
+      DataPrivateSubnet2: 10.40.85.0/24
+      DataPublicSubnet1: 10.40.86.0/24
+      DataPublicSubnet2: 10.40.87.0/24
+      xxxDataVpcASN: 4213979008
+      DataVpcASN: 7224
+      
+  TransitVpcSpokeModeMap:
+    Primary:
+      SpokeTagPrimary: vpc-transit-global-primary-spoke
+      SpokeTagPrimaryValue: false
+      SpokeTagDR: vpc-transit-global-dr-spoke
+      SpokeTagDRValue: false
+    DR:
+      SpokeTagPrimary: vpc-transit-global-primary-spoke
+      SpokeTagPrimaryValue: false
+      SpokeTagDR: vpc-transit-global-dr-spoke
+      SpokeTagDRValue: false       static data
+      
+Conditions:                                  
+  IsDev: !Equals [saasdev, !Ref Environment]
+
+  
+Resources: 
+
+  AppVPC:   
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", AppVpcCIDR]
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "vpc-saas"
+                - !Ref Environment       
+                - "app"
+                - !Ref AWS::Region
+
+
+  AppInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "igw-saas"         
+                - !Ref Environment
+                - "app"
+                - !Ref AWS::Region
+
+  AppInternetGatewayAttachment:
+      Type: AWS::EC2::VPCGatewayAttachment
+      Properties:
+        InternetGatewayId: !Ref AppInternetGateway
+        VpcId: !Ref AppVPC
+
+  AppPublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Condition: IsDev
+    Properties:
+      VpcId: !Ref AppVPC
+      CidrBlock: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", AppPublicSubnet1]
+      AvailabilityZone: !FindInMap [regionMap, !Ref "AWS::Region", AvailabilityZone1]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "subnet-saas"
+                - !Ref Environment
+                - "app-public-1"            
+                - !Ref AWS::Region
+
+  AppPublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AppVPC
+      CidrBlock: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", AppPublicSubnet2]
+      AvailabilityZone: !FindInMap [regionMap, !Ref "AWS::Region", AvailabilityZone2]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "subnet-saas"
+                - !Ref Environment
+                - "app-public-2"
+                - !Ref AWS::Region          
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  AppPrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Condition: IsDev
+    Properties:
+      VpcId: !Ref AppVPC
+      CidrBlock: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", AppPrivateSubnet1]
+      AvailabilityZone: !FindInMap [regionMap, !Ref "AWS::Region", AvailabilityZone1]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "subnet-saas"
+                - !Ref Environment
+                - "app-private-1"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  AppPrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AppVPC
+      CidrBlock: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", AppPrivateSubnet2]
+      AvailabilityZone: !FindInMap [regionMap, !Ref "AWS::Region", AvailabilityZone2]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "subnet-saas"
+                - !Ref Environment
+                - "app-private-2"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  DataVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", DataVpcCIDR]
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "vpc-saas"
+                - !Ref Environment
+                - "data"
+                - !Ref AWS::Region
+
+  DataVPCSaasDhcpOptionsAssociation:
+    Type: AWS::EC2::VPCDHCPOptionsAssociation
+    Properties:
+      VpcId: !Ref DataVPC
+      DhcpOptionsId: !Ref SaasDhcpOptions
+
+  DataVPNGateway:
+    Type: AWS::EC2::VPNGateway
+    Properties:
+      AmazonSideAsn: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", DataVpcASN]
+      Type: ipsec.1
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "vgw-saas"
+                - !Ref Environment
+                - "data"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+        - Key: !FindInMap [TransitVpcSpokeModeMap, !Ref TransitVpcSpokeMode, SpokeTagPrimary]
+          Value: !FindInMap [TransitVpcSpokeModeMap, !Ref TransitVpcSpokeMode, SpokeTagPrimaryValue]
+        - Key: !FindInMap [TransitVpcSpokeModeMap, !Ref TransitVpcSpokeMode, SpokeTagDR]
+          Value: !FindInMap [TransitVpcSpokeModeMap, !Ref TransitVpcSpokeMode, SpokeTagDRValue]
+
+  DataVpnGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn: DataVPNGateway
+    Properties:
+      VpcId: !Ref DataVPC
+      VpnGatewayId: !Ref DataVPNGateway
+
+  DataInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "igw-saas"
+                - !Ref Environment
+                - "data"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  DataInternetGatewayAttachment:
+      Type: AWS::EC2::VPCGatewayAttachment
+      Properties:
+        InternetGatewayId: !Ref DataInternetGateway
+        VpcId: !Ref DataVPC
+
+  DataPublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DataVPC
+      CidrBlock: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", DataPublicSubnet1]
+      AvailabilityZone: !FindInMap [regionMap, !Ref "AWS::Region", AvailabilityZone1]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "subnet-saas"
+                - !Ref Environment
+                - "data-public-1"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  DataPublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DataVPC
+      CidrBlock: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", DataPublicSubnet2]
+      AvailabilityZone: !FindInMap [regionMap, !Ref "AWS::Region", AvailabilityZone2]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "subnet-saas"
+                - !Ref Environment
+                - "data-public-2"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  DataPrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DataVPC
+      CidrBlock: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", DataPrivateSubnet1]
+      AvailabilityZone: !FindInMap [regionMap, !Ref "AWS::Region"]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "subnet-saas"
+                - !Ref Environment
+                - "data-private-1"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  DataPrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DataVPC
+      CidrBlock: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", DataPrivateSubnet2]
+      AvailabilityZone: !FindInMap [regionMap, !Ref "AWS::Region", AvailabilityZone2]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "subnet-saas"
+                - !Ref Environment
+                - "data-private-2"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  AppNatGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AppInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  AppNatGateway:
+    DependsOn: AppNatGatewayEIP
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt AppNatGatewayEIP.AllocationId
+      SubnetId: !Ref AppPublicSubnet1
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "ngw-saas"
+                - !Ref Environment
+                - "app-public-1"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  AppPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref AppVPC
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "rtb-saas"
+                - !Ref Environment
+                - "app-public"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  AppPublicRoute1:
+    Type: AWS::EC2::Route
+    DependsOn: AppInternetGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref AppInternetGateway
+      RouteTableId: !Ref AppPublicRouteTable
+
+  AppPublicRoute2:
+    Type: AWS::EC2::Route
+    DependsOn: AppVpnGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/8
+      GatewayId: !Ref AppVPNGateway
+      RouteTableId: !Ref AppPublicRouteTable
+
+  AppPrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref AppVPC
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "rtb-saas"
+                - !Ref Environment
+                - "app-private"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  AppPrivateRoute1:
+    Type: AWS::EC2::Route
+    DependsOn: AppNatGateway
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref AppNatGateway
+      RouteTableId: !Ref AppPrivateRouteTable
+
+  AppPrivateRoute2:
+    Type: AWS::EC2::Route
+    DependsOn: AppVpnGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/8
+      GatewayId: !Ref AppVPNGateway
+      RouteTableId: !Ref AppPrivateRouteTable
+
+  AppPrivateRoute3:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - AppVpnGatewayAttachment
+      - AppToDataVpcPeering
+    Properties:
+      DestinationCidrBlock: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", DataVpcCIDR]
+      VpcPeeringConnectionId: !Ref AppToDataVpcPeering
+      RouteTableId: !Ref AppPrivateRouteTable
+
+  AppPrivateRoute4:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - AppVpnGatewayAttachment
+      - AppToDadsProcessingVpcPeering
+    Properties:
+      DestinationCidrBlock: !Ref DadsProcessingVpcCIDR
+      VpcPeeringConnectionId: !Ref AppToDadsProcessingVpcPeering
+      RouteTableId: !Ref AppPrivateRouteTable
+
+  AppPrivateRoute5:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - AppVpnGatewayAttachment
+      - AppToDadsSharedVpcPeering
+    Properties:
+      DestinationCidrBlock: !Ref DadsSharedVpcCIDR
+      VpcPeeringConnectionId: !Ref AppToDadsSharedVpcPeering
+      RouteTableId: !Ref AppPrivateRouteTable
+
+  AppPrivateRoute6:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - AppVpnGatewayAttachment
+      - AppToDadsTransitVpcPeering
+    Properties:
+      DestinationCidrBlock: !Ref DadsTransitVpcCIDR
+      VpcPeeringConnectionId: !Ref AppToDadsTransitVpcPeering
+      RouteTableId: !Ref AppPrivateRouteTable
+
+  AppPrivateRoute7:
+    Type: AWS::EC2::Route
+    DependsOn: AppVpnGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 192.168.3.0/24
+      GatewayId: !Ref AppVPNGateway
+      RouteTableId: !Ref AppPrivateRouteTable
+
+  DataNatGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: DataInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  DataNatGateway:
+    DependsOn: DataNatGatewayEIP
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt DataNatGatewayEIP.AllocationId
+      SubnetId: !Ref DataPublicSubnet1
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "ngw-saas"
+                - !Ref Environment
+                - "data-public-1"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  DataPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref DataVPC
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "rtb-saas"
+                - !Ref Environment
+                - "data-public"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  DataPublicRoute1:
+    Type: AWS::EC2::Route
+    DependsOn: DataInternetGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref DataInternetGateway
+      RouteTableId: !Ref DataPublicRouteTable
+
+  DataPublicRoute2:
+    Type: AWS::EC2::Route
+    DependsOn: DataVpnGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/8
+      GatewayId: !Ref DataVPNGateway
+      RouteTableId: !Ref DataPublicRouteTable
+
+  DataPrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref DataVPC
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "rtb-saas"
+                - !Ref Environment
+                - "data-private"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  DataPrivateRoute1:
+    Type: AWS::EC2::Route
+    DependsOn: DataNatGateway
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref DataNatGateway
+      RouteTableId: !Ref DataPrivateRouteTable
+
+  DataPrivateRoute2:
+    Type: AWS::EC2::Route
+    DependsOn: DataVpnGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/8
+      GatewayId: !Ref DataVPNGateway
+      RouteTableId: !Ref DataPrivateRouteTable
+
+  DataPrivateRoute3:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - DataVpnGatewayAttachment
+      - AppToDataVpcPeering
+    Properties:
+      DestinationCidrBlock: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", AppVpcCIDR]
+      VpcPeeringConnectionId: !Ref AppToDataVpcPeering
+      RouteTableId: !Ref DataPrivateRouteTable
+
+  DataPrivateRoute4:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - DataVpnGatewayAttachment
+      - DataToDadsSharedVpcPeering
+    Properties:
+      DestinationCidrBlock: !Ref DadsSharedVpcCIDR
+      VpcPeeringConnectionId: !Ref DataToDadsSharedVpcPeering
+      RouteTableId: !Ref DataPrivateRouteTable
+
+  DataPrivateRoute5:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - DataVpnGatewayAttachment
+      - DataToDadsTransitVpcPeering
+    Properties:
+      DestinationCidrBlock: !Ref DadsTransitVpcCIDR
+      VpcPeeringConnectionId: !Ref DataToDadsTransitVpcPeering
+      RouteTableId: !Ref DataPrivateRouteTable
+
+  AppPublicSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: AppPublicSubnet1
+      RouteTableId:
+        Ref: AppPublicRouteTable
+
+  AppPublicSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: AppPublicSubnet2
+      RouteTableId:
+        Ref: AppPublicRouteTable
+
+  DataPublicSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: DataPublicSubnet1
+      RouteTableId:
+        Ref: DataPublicRouteTable
+
+  DataPublicSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: DataPublicSubnet2
+      RouteTableId:
+        Ref: DataPublicRouteTable
+
+  AppPrivateSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: AppPrivateSubnet1
+      RouteTableId:
+        Ref: AppPrivateRouteTable
+
+  AppPrivateSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: AppPrivateSubnet2
+      RouteTableId:
+        Ref: AppPrivateRouteTable
+
+  DataPrivateSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: DataPrivateSubnet1
+      RouteTableId:
+        Ref: DataPrivateRouteTable
+
+  DataPrivateSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: DataPrivateSubnet2
+      RouteTableId:
+        Ref: DataPrivateRouteTable
+
+  AppVPCFlowLogsRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName:
+        !Join
+          - "-"
+          -
+            - "iam-role-saas"
+            - !Ref Environment
+            - "app-vpc-flow-logs"
+            - !Ref AWS::Region
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - vpc-flow-logs.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+
+  AppVPCFlowLogsPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName:
+        !Join
+          - "-"
+          -
+            - "iam-policy-saas"
+            - !Ref Environment
+            - "app-vpc-flow-logs"
+            - !Ref AWS::Region
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:DescribeLogGroups'
+              - 'logs:DescribeLogStreams'
+              - 'logs:PutLogEvents'
+            Resource: "*"
+
+      Roles:
+        - !Ref AppVPCFlowLogsRole
+
+  AppVPCLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        !Join
+          - "-"
+          -
+            - "cw-lg-saas"
+            - !Ref Environment
+            - "app-vpc-flow-logs"
+            - !Ref AWS::Region
+      RetentionInDays: 7
+
+  AppVPCFlowLog:
+    Type: AWS::EC2::FlowLog
+    DependsOn: AppVPCFlowLogsRole
+    Properties:
+      DeliverLogsPermissionArn:
+        'Fn::GetAtt':
+          - AppVPCFlowLogsRole
+          - Arn
+      LogGroupName: !Ref AppVPCLogGroup
+      ResourceId: !Ref AppVPC
+      ResourceType: "VPC"
+      TrafficType: "ALL"
+
+  DataVPCFlowLogsRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName:
+        !Join
+          - "-"
+          -
+            - "iam-role-saas"
+            - !Ref Environment
+            - "data-vpc-flow-logs"
+            - !Ref AWS::Region
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - vpc-flow-logs.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+
+  DataVPCFlowLogsPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName:
+        !Join
+          - "-"
+          -
+            - "iam-policy-saas"
+            - !Ref Environment
+            - "data-vpc-flow-logs"
+            - !Ref AWS::Region
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:DescribeLogGroups'
+              - 'logs:DescribeLogStreams'
+              - 'logs:PutLogEvents'
+            Resource: "*"
+
+      Roles:
+        - !Ref DataVPCFlowLogsRole
+
+  DataVPCLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        !Join
+          - "-"
+          -
+            - "cw-lg-saas"
+            - !Ref Environment
+            - "data-vpc-flow-logs"
+            - !Ref AWS::Region
+      RetentionInDays: 7
+
+  DataVPCFlowLog:
+    Type: AWS::EC2::FlowLog
+    DependsOn: DataVPCFlowLogsRole
+    Properties:
+      DeliverLogsPermissionArn:
+        'Fn::GetAtt':
+          - DataVPCFlowLogsRole
+          - Arn
+      LogGroupName: !Ref DataVPCLogGroup
+      ResourceId: !Ref DataVPC
+      ResourceType: "VPC"
+      TrafficType: "ALL"
+
+  AppPublicNacl:
+    Type: "AWS::EC2::NetworkAcl"
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "nacl-saas"
+                - !Ref Environment
+                - "app-public"
+                - !Ref AWS::Region
+      VpcId: !Ref AppVPC
+
+  DataPublicNacl:
+    Type: "AWS::EC2::NetworkAcl"
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "nacl-saas"
+                - !Ref Environment
+                - "data-public"
+                - !Ref AWS::Region
+      VpcId: !Ref DataVPC
+
+  AppPrivateNacl:
+    Type: "AWS::EC2::NetworkAcl"
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "nacl-saas"
+                - !Ref Environment
+                - "app-private"
+                - !Ref AWS::Region
+      VpcId: !Ref AppVPC
+
+  DataPrivateNacl:
+    Type: "AWS::EC2::NetworkAcl"
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "nacl-saas"
+                - !Ref Environment
+                - "data-private"
+                - !Ref AWS::Region
+      VpcId: !Ref DataVPC
+
+  AppPublicNaclAssociation1:
+    Type: "AWS::EC2::SubnetNetworkAclAssociation"
+    Properties:
+      SubnetId: !Ref AppPublicSubnet1
+      NetworkAclId: !Ref AppPublicNacl
+
+  AppPublicNaclAssociation2:
+    Type: "AWS::EC2::SubnetNetworkAclAssociation"
+    Properties:
+      SubnetId: !Ref AppPublicSubnet2
+      NetworkAclId: !Ref AppPublicNacl
+
+  DataPublicNaclAssociation1:
+    Type: "AWS::EC2::SubnetNetworkAclAssociation"
+    Properties:
+      SubnetId: !Ref DataPublicSubnet1
+      NetworkAclId: !Ref DataPublicNacl
+
+  DataPublicNaclAssociation2:
+    Type: "AWS::EC2::SubnetNetworkAclAssociation"
+    Properties:
+      SubnetId: !Ref DataPublicSubnet2
+      NetworkAclId: !Ref DataPublicNacl
+
+  AppPrivateNaclAssociation1:
+    Type: "AWS::EC2::SubnetNetworkAclAssociation"
+    Properties:
+      SubnetId: !Ref AppPrivateSubnet1
+      NetworkAclId: !Ref AppPrivateNacl
+
+  AppPrivateNaclAssociation2:
+    Type: "AWS::EC2::SubnetNetworkAclAssociation"
+    Properties:
+      SubnetId: !Ref AppPrivateSubnet2
+      NetworkAclId: !Ref AppPrivateNacl
+
+  DataPrivateNaclAssociation1:
+    Type: "AWS::EC2::SubnetNetworkAclAssociation"
+    Properties:
+      SubnetId: !Ref DataPrivateSubnet1
+      NetworkAclId: !Ref DataPrivateNacl
+
+  DataPrivateNaclAssociation2:
+    Type: "AWS::EC2::SubnetNetworkAclAssociation"
+    Properties:
+      SubnetId: !Ref DataPrivateSubnet2
+      NetworkAclId: !Ref DataPrivateNacl
+
+  AppPublicNaclEntryI1:
+    Type: "AWS::EC2::NetworkAclEntry"
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: false
+      NetworkAclId: !Ref AppPublicNacl
+      Protocol: -1
+      RuleAction : allow
+      RuleNumber : 100
+
+  AppPublicNaclEntryE1:
+    Type: "AWS::EC2::NetworkAclEntry"
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId: !Ref AppPublicNacl
+      Protocol: -1
+      RuleAction : allow
+      RuleNumber : 100
+
+  DataPublicNaclEntryI1:
+    Type: "AWS::EC2::NetworkAclEntry"
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: false
+      NetworkAclId: !Ref DataPublicNacl
+      Protocol: -1
+      RuleAction : allow
+      RuleNumber : 100
+
+  DataPublicNaclEntryE1:
+    Type: "AWS::EC2::NetworkAclEntry"
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId: !Ref DataPublicNacl
+      Protocol: -1
+      RuleAction : allow
+      RuleNumber : 100
+
+  AppPrivateNaclEntryI1:
+    Type: "AWS::EC2::NetworkAclEntry"
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: false
+      NetworkAclId: !Ref AppPrivateNacl
+      Protocol: -1
+      RuleAction : allow
+      RuleNumber : 100
+
+  AppPrivateNaclEntryE1:
+    Type: "AWS::EC2::NetworkAclEntry"
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId: !Ref AppPrivateNacl
+      Protocol: -1
+      RuleAction : allow
+      RuleNumber : 100
+
+  DataPrivateNaclEntryI1:
+    Type: "AWS::EC2::NetworkAclEntry"
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: false
+      NetworkAclId: !Ref DataPrivateNacl
+      Protocol: -1
+      RuleAction : allow
+      RuleNumber : 100
+
+  DataPrivateNaclEntryE1:
+    Type: "AWS::EC2::NetworkAclEntry"
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      NetworkAclId: !Ref DataPrivateNacl
+      Protocol: -1
+      RuleAction : allow
+      RuleNumber : 100
+
+  AppToDadsProcessingVpcPeering:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+      PeerVpcId: !Ref DADSProcessingVpc
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "vpc-peer-saas"
+                - !Ref Environment
+                - "app-to-dads-processing"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+      VpcId: !Ref AppVPC
+
+  AppToDadsSharedVpcPeering:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+      PeerVpcId: !Ref DADSSharedVpc
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "vpc-peer-saas"
+                - !Ref Environment
+                - "app-to-dads-shared"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+      VpcId: !Ref AppVPC
+
+  AppToDadsTransitVpcPeering:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+      PeerVpcId: !Ref DADSTransitVpc
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "vpc-peer-saas"
+                - !Ref Environment
+                - "app-to-dads-transit"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+      VpcId: !Ref AppVPC
+
+  DataToDadsSharedVpcPeering:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+      PeerVpcId: !Ref DADSSharedVpc
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "vpc-peer-saas"
+                - !Ref Environment
+                - "data-to-dads-shared"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+      VpcId: !Ref DataVPC
+
+  DataToDadsTransitVpcPeering:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+      PeerVpcId: !Ref DADSTransitVpc
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "vpc-peer-saas"
+                - !Ref Environment
+                - "data-to-dads-transit"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+      VpcId: !Ref DataVPC
+
+  AppToDataVpcPeering:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+      PeerVpcId: !Ref DataVPC
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "vpc-peer-saas"
+                - !Ref Environment
+                - "app-to-data"
+                - !Ref AWS::Region
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+      VpcId: !Ref AppVPC
+
+Outputs:
+  AppVPC:
+    Description: A reference to the created SaaS App VPC
+    Value: !Ref AppVPC
+    Export:
+      Name: !Sub "${AWS::StackName}-AppVPC-ID"
+
+  AppVPCCIDR:
+    Description: A reference to the created SaaS App VPC CIDR
+    Value: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", AppVpcCIDR]
+
+  DataVPC:
+    Description: A reference to the created SaaS Data VPC
+    Value: !Ref DataVPC
+    Export:
+      Name: !Sub "${AWS::StackName}-DataVPC-ID"
+
+  DataVPCCIDR:
+    Description: A reference to the created SaaS Data VPC CIDR
+    Value: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", DataVpcCIDR]
+
+  AppInternetGateway:
+    Description: A reference to the SaaS App Internet Gateway
+    Value: !Ref AppInternetGateway
+
+  DataInternetGateway:
+    Description: A reference to the SaaS Data Internet Gateway
+    Value: !Ref DataInternetGateway
+
+  AppPublicSubnet1:
+    Description: A reference to the SaaS App public subnet created in 1st Availability Zone
+    Value: !Ref AppPublicSubnet1
+    Export:
+      Name: !Sub "${AWS::StackName}-AppPublicSubnet1-ID"
+
+  AppPublicSubnetCIDR1:
+    Description: A reference to the SaaS App public subnet CIDR created in 1st Availability Zone
+    Value: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", AppPublicSubnet1]
+
+  AppPublicSubnet2:
+    Description: A reference to the SaaS App public subnet created in 2nd Availability Zone
+    Value: !Ref AppPublicSubnet2
+    Export:
+      Name: !Sub "${AWS::StackName}-AppPublicSubnet2-ID"
+
+  AppPublicSubnetCIDR2:
+    Description: A reference to the SaaS App public subnet CIDR created in 2nd Availability Zone
+    Value: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", AppPublicSubnet2]
+
+  AppPrivateSubnet1:
+    Description: A reference to the SaaS App private subnet created in 1st Availability Zone
+    Value: !Ref AppPrivateSubnet1
+    Export:
+      Name: !Sub "${AWS::StackName}-AppPrivateSubnet1-ID"
+
+  AppPrivateSubnetCIDR1:
+    Description: A reference to the SaaS App private subnet CIDR created in 1st Availability Zone
+    Value: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", AppPrivateSubnet1]
+    Export:
+      Name: !Sub "${AWS::StackName}-AppPrivateSubnet1-CIDR"
+
+  AppPrivateSubnet2:
+    Description: A reference to the SaaS App private subnet created in 2nd Availability Zone
+    Value: !Ref AppPrivateSubnet2
+    Export:
+      Name: !Sub "${AWS::StackName}-AppPrivateSubnet2-ID"
+
+  AppPrivateSubnetCIDR2:
+    Description: A reference to the SaaS App private subnet CIDR created in 2nd Availability Zone
+    Value: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", AppPrivateSubnet2]
+    Export:
+      Name: !Sub "${AWS::StackName}-AppPrivateSubnet2-CIDR"
+
+  DataPublicSubnet1:
+    Description: A reference to the SaaS Data public subnet created in 1st Availability Zone
+    Value: !Ref DataPublicSubnet1
+    Export:
+      Name: !Sub "${AWS::StackName}-DataPublicSubnet1-ID"
+
+  DataPublicSubnetCIDR1:
+    Description: A reference to the SaaS Data public subnet CIDR created in 1st Availability Zone
+    Value: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", DataPublicSubnet1]
+
+  DataPublicSubnet2:
+    Description: A reference to the SaaS Data public subnet created in 2nd Availability Zone
+    Value: !Ref DataPublicSubnet2
+    Export:
+      Name: !Sub "${AWS::StackName}-DataPublicSubnet2-ID"
+
+  DataPublicSubnetCIDR2:
+    Description: A reference to the SaaS Data public subnet CIDR created in 2nd Availability Zone
+    Value: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", DataPublicSubnet2]
+
+  DataPrivateSubnet1:
+    Description: A reference to the SaaS Data private subnet created in 1st Availability Zone
+    Value: !Ref DataPrivateSubnet1
+    Export:
+      Name: !Sub "${AWS::StackName}-DataPrivateSubnet1-ID"
+
+  DataPrivateSubnetCIDR1:
+    Description: A reference to the SaaS Data private subnet CIDR created in 1st Availability Zone
+    Value: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", DataPrivateSubnet1]
+    Export:
+      Name: !Sub "${AWS::StackName}-DataPrivateSubnet1-CIDR"
+
+  DataPrivateSubnet2:
+    Description: A reference to the SaaS Data private subnet created in 2nd Availability Zone
+    Value: !Ref DataPrivateSubnet2
+    Export:
+      Name: !Sub "${AWS::StackName}-DataPrivateSubnet2-ID"
+
+  DataPrivateSubnetCIDR2:
+    Description: A reference to the SaaS Data private subnet CIDR created in 2nd Availability Zone
+    Value: !FindInMap [ !Ref "Environment",  !Ref "AWS::Region", DataPrivateSubnet2]
+    Export:
+      Name: !Sub "${AWS::StackName}-DataPrivateSubnet2-CIDR"
+
+  AppNatGatewayEIP:
+    Description: A reference to the SaaS App NATGateway Elastic IP created
+    Value: !Ref AppNatGatewayEIP
+
+  AppNatGateway:
+    Description: A reference to the SaaS App NATGateway created
+    Value: !Ref AppNatGateway
+
+  AppPublicRouteTable:
+    Description: A reference to the SaaS App public route table created
+    Value: !Ref AppPublicRouteTable
+
+  DataNatGatewayEIP:
+    Description: A reference to the SaaS Data NATGateway Elastic IP created
+    Value: !Ref DataNatGatewayEIP
+
+  DataNatGateway:
+    Description: A reference to the SaaS Data NATGateway created
+    Value: !Ref DataNatGateway
+
+  DataPublicRouteTable:
+    Description: A reference to the SaaS Data public route table created
+    Value: !Ref DataPublicRouteTable
+
+  AppPrivateRouteTable:
+    Description: A reference to the SaaS App private route table created
+    Value: !Ref AppPrivateRouteTable
+
+  DataPrivateRouteTable:
+    Description: A reference to the SaaS Data private route table created
+    Value: !Ref DataPrivateRouteTable
+
+  AppVPCFlowLogsRole:
+    Description: A reference to the IAM role created for App vpc flow logs
+    Value: !Ref AppVPCFlowLogsRole
+
+  AppVPCFlowLogsRoleArn:
+    Description: A reference to the IAM role arn created for App vpc flow logs
+    Value: !GetAtt AppVPCFlowLogsRole.Arn
+
+  AppVPCFlowLogsPolicy:
+    Description: A reference to the SaaS App IAM policy created for vpc flow logs
+    Value: !Ref AppVPCFlowLogsPolicy
+
+  AppVPCLogGroup:
+    Description: A reference to the SaaS App vpc log group created for vpc flow logs
+    Value: !Ref AppVPCLogGroup
+
+  DataVPCFlowLogsRole:
+    Description: A reference to the IAM role created for Data vpc flow logs
+    Value: !Ref DataVPCFlowLogsRole
+
+  DataVPCFlowLogsRoleArn:
+    Description: A reference to the IAM role arn created for Data vpc flow logs
+    Value: !GetAtt DataVPCFlowLogsRole.Arn
+
+  DataVPCFlowLogsPolicy:
+    Description: A reference to the SaaS Data IAM policy created for vpc flow logs
+    Value: !Ref DataVPCFlowLogsPolicy
+
+  DataVPCLogGroup:
+    Description: A reference to the SaaS Data vpc log group created for vpc flow logs
+    Value: !Ref DataVPCLogGroup
+
+  AppPublicNacl:
+    Description: A reference to the SaaS App public nacl created
+    Value: !Ref AppPublicNacl
+
+  AppPrivateNacl:
+    Description: A reference to the SaaS App private nacl created
+    Value: !Ref AppPrivateNacl
+
+  DataPublicNacl:
+    Description: A reference to the SaaS Data public nacl created
+    Value: !Ref DataPublicNacl
+
+  DataPrivateNacl:
+    Description: A reference to the SaaS Data private nacl created
+    Value: !Ref DataPrivateNacl
+
+

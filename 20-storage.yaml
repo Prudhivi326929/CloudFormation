@@ -1,0 +1,408 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template for provisioning the storage for saas environment with a generic kubernetes node.
+Parameters:
+  NetworkStackName:
+    Type: String
+    AllowedValues:
+      - stack-saas-saasdev-network
+      - stack-saas-saasqa-network
+      - stack-saas-saasstaging-network
+    Default: stack-saas-saasdev-network
+    Description: StackName of Network Template.
+  ClusterName:
+    Type: String
+    Default: dev-qa
+    AllowedValues:
+      - dev-qa
+      - staging-prod
+    Description: which k8's cluster in this region should this ASG register with?
+  Environment:
+    Type: String
+    AllowedValues:
+      - saasdev
+      - saasqa
+      - saasstaging
+    Description: Which environment is this being deployed to?
+  EnvironmentSize:
+    Type: String
+    AllowedValues:
+      - Tiny
+      - Small
+      - Medium
+      - Large
+      - Xlarge
+    Description: Set size of environment to determine resource configuration.
+  AuroraDatabaseUsername:
+    Type: String
+    Default: saasdbadmin
+    Description: The master user name for the DB instance.
+  NodePortPod1:
+    Type:
+    Description:
+    Default: 1047
+  NodePortPod2:
+    Type:
+    Description:
+    Default: 1048
+  NodePortPod3:
+    Type:
+    Description:
+    Default: 1049
+  AuroraDatabasePassword:
+    Type: String
+    NoEcho: true
+    MinLength: 12
+    AllowedPattern : ^[^\"\/@]+$
+    Description: The master password(minimum of 12 characters) for the DB instance. **** /, @ and " are not allowed ****.
+  AuroraBackupRetentionPeriod:
+    Type: Number
+    Default: 7
+    Description: The number of days for which automatic database backups are retained.
+
+Mappings:
+  global:
+    hostedZones:
+      public: pr-dads.com
+      private: pr-dads-internal.com
+    NodePortPod1: 1047
+    NodePortPod2: 1048
+    NodePortPod3: 1049
+  EnvironmentSize:
+    Tiny:
+      auroraDatabaseInstanceClass: db.r3.large
+    Small:
+      auroraDatabaseInstanceClass: db.r3.large
+    Medium:
+      auroraDatabaseInstanceClass: db.r3.large
+    Large:
+      auroraDatabaseInstanceClass: db.r3.large
+    Xlarge:
+      auroraDatabaseInstanceClass: db.r3.large
+
+Resources:
+  s3BucketElbAccessLogs:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName:
+        !Join
+          - "-"
+          -
+            - "pr-saas"
+            - !Ref Environment
+            - !Ref ClusterName
+            - "access-logs"
+            - !Ref "AWS::Region"
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "pr-saas"
+                - !Ref Environment
+                - !Ref ClusterName
+                - "access-logs"
+                - !Ref "AWS::Region"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Public
+        - Key: Department
+          Value: IT
+
+  s3BucketElbAccessLogsPolicy:
+    Type: AWS::S3::BucketPolicy
+    DeletionPolicy: Retain
+    Properties:
+      Bucket: !Ref s3BucketElbAccessLogs
+      PolicyDocument:
+        Statement:
+        - Sid: Stmt1413182819426
+          Effect: Allow
+          Principal:
+            AWS:
+              - arn:aws:iam::127311923021:root
+              - !Join
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':user'
+                  - '/'
+                  - 'dhanks@progressrail.com'
+          Action: s3:PutObject
+          Resource:
+            Fn::Join:
+              - ""
+              -
+                - "arn:aws:s3:::"
+                - !Ref s3BucketElbAccessLogs
+                - "/*"
+
+  rdsSecurityGroupDataVpc:
+    Type: AWS::EC2::SecurityGroup
+    DeletionPolicy: Retain
+    Properties:
+      GroupDescription: Security Group for the rds database instances
+      VpcId: {"Fn::ImportValue": !Sub "${NetworkStackName}-DataVPC-ID"}
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.63.0.0/16
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.64.0.0/16
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.244.0.0/16
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.133.0.0/16
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: {"Fn::ImportValue": !Sub "${NetworkStackName}-AppPrivateSubnet1-CIDR"}
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: {"Fn::ImportValue": !Sub "${NetworkStackName}-AppPrivateSubnet2-CIDR"}
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: {"Fn::ImportValue": !Sub "${NetworkStackName}-DataPrivateSubnet1-CIDR"}
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: {"Fn::ImportValue": !Sub "${NetworkStackName}-DataPrivateSubnet2-CIDR"}
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.40.58.0/25
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.40.58.128/25
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.44.58.0/25
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.44.58.128/25
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.240.0.0/16
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "sg-saas"
+                - !Ref Environment
+                - "rds"
+                - !Ref "AWS::Region"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Public
+        - Key: Department
+          Value: IT
+
+  AuroraDatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    DeletionPolicy: Retain
+    Properties:
+      DBSubnetGroupDescription: CloudFormation managed DB subnet group.
+      SubnetIds: ["Fn::ImportValue": !Sub "${NetworkStackName}-DataPrivateSubnet1-ID","Fn::ImportValue": !Sub "${NetworkStackName}-DataPrivateSubnet2-ID"]
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "sng-saas"
+                - !Ref Environment
+                - "rds"
+                - !Ref "AWS::Region"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Public
+        - Key: Department
+          Value: IT
+
+  AuroraDatabaseCluster:
+    Type: AWS::RDS::DBCluster
+    DeletionPolicy: Retain
+    Properties:
+      Engine: aurora-mysql
+      DBClusterParameterGroupName: default.aurora-mysql5.7
+      MasterUsername:
+            !Join
+              - ","
+              -
+                - !Ref NodePortPod1
+                - !Ref NodePortPod2
+                - !Ref NodePortPod3
+      MasterUserPassword: !Ref AuroraDatabasePassword
+      BackupRetentionPeriod: !Ref AuroraBackupRetentionPeriod
+      PreferredBackupWindow: 01:00-02:00
+      PreferredMaintenanceWindow: mon:03:00-mon:04:00
+      DBSubnetGroupName: !Ref AuroraDatabaseSubnetGroup
+      VpcSecurityGroupIds: [!GetAtt rdsSecurityGroupDataVpc.GroupId]
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "rds-aurora-cluster-saas"
+                - !Ref Environment
+                - "database"
+                - !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  AuroraDatabasePrimaryInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Retain
+    Properties:
+      Engine: aurora-mysql
+      DBParameterGroupName: default.aurora-mysql5.7
+      DBClusterIdentifier: !Ref AuroraDatabaseCluster
+      DBInstanceClass: !FindInMap ["EnvironmentSize", !Ref EnvironmentSize, auroraDatabaseInstanceClass]
+      DBSubnetGroupName: !Ref AuroraDatabaseSubnetGroup
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - "-"
+              -
+                - "rds-aurora-instance-saas"
+                - !Ref Environment
+                - "database"
+                - !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: OrgUnit
+          Value: SaaS
+        - Key: Owner
+          Value: DougHanks
+        - Key: Visibility
+          Value: Private
+        - Key: Department
+          Value: IT
+
+  AuroraDatabaseEndpointRecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName:
+        !Join
+          - ""
+          -
+            - !FindInMap [global, hostedZones, private]
+            - "."
+      Name:
+        !Join
+          - ""
+          -
+            - "db-"
+            - !Ref Environment
+            - "."
+            - !FindInMap [global, hostedZones, private]
+      Type: CNAME
+      TTL: 300
+      ResourceRecords:
+        - !GetAtt  AuroraDatabaseCluster.Endpoint.Address
+
+  AuroraDatabaseReadOnlyEndpointRecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName:
+        !Join
+          - ""
+          -
+            - !FindInMap [global, hostedZones, private]
+            - "."
+      Name:
+        !Join
+          - ""
+          -
+            - "db-ro-"
+            - !Ref Environment
+            - "."
+            - !FindInMap [global, hostedZones, private]
+      Type: CNAME
+      TTL: 300
+      ResourceRecords:
+        - !GetAtt  AuroraDatabaseCluster.ReadEndpoint.Address
+
+Outputs:
+  S3BucketElbAccessLogs:
+    Description: The bucket where ELB Access logs will be written
+    Value: !Ref s3BucketElbAccessLogs
+    Export:
+      Name: !Sub "${AWS::StackName}-S3BucketElbAccessLogs"
+
+  S3BucketElbAccessLogsPolicy:
+    Description: The policy for the ELB Access logs bucket
+    Value: !Ref s3BucketElbAccessLogsPolicy
+
+  rdsSecurityGroupDataVpc:
+    Description: The RDS Security Group in the Data VPC
+    Value: !Ref rdsSecurityGroupDataVpc
+
+  AuroraDatabaseSubnetGroup:
+    Description: The RDS Aurora Database Subnet Group
+    Value: !Ref AuroraDatabaseSubnetGroup
+
+  AuroraDatabaseCluster:
+    Description: The RDS Aurora Database Cluster
+    Value: !Ref AuroraDatabaseCluster
+
+  AuroraDatabaseClusterEndpointAddress:
+    Description: The RDS Aurora Database Cluster
+    Value: !GetAtt AuroraDatabaseCluster.Endpoint.Address
+
+  AuroraDatabaseClusterReadOnlyEndpointAddress:
+    Description: The RDS Aurora Database Cluster
+    Value: !GetAtt AuroraDatabaseCluster.ReadEndpoint.Address
+
+  AuroraDatabasePrimaryInstance:
+    Description: The RDS Aurora Database Primary Instance
+    Value: !Ref AuroraDatabasePrimaryInstance
+
+  AuroraDatabaseEndpointRecordSet:
+    Description: The DNS name for Aurora Database Cluster
+    Value: !Ref AuroraDatabaseEndpointRecordSet
+
+  AuroraDatabaseReadOnlyEndpointRecordSet:
+    Description: The Read-Only DNS name for Aurora Database Cluster
+    Value: !Ref AuroraDatabaseReadOnlyEndpointRecordSet
