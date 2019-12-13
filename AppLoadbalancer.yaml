@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cloudformation template to create ALB, Target group and listener for DeepIntent API project
+
+
+Parameters:
+  ALBName:
+    Type: String
+    Default: ecdw-deepintent-alb-dev
+    Description: The Name for ALB
+  TargetGrpName:
+    Type: String
+    Default: ecdw-deepintent-targetgrp-dev
+    Description: The Name for Target Group
+  ALBSecGrp:
+    Type: String
+    Default: sg-08f89cee80052b41c
+    Description: The Security Group for ALB
+  ALBSubnet1:
+    Type: String
+    Default: subnet-48bf4213
+    Description: ALB Subnet1
+  ALBSubnet2:
+    Type: String
+    Default: subnet-69c03f44
+    Description: ALB Subnet2
+  VPCID:
+    Type: String
+    Default: vpc-6b7c520c
+    Description: VPC ID for target group
+
+
+
+Resources:
+
+    ApplicationLoadBalancer:
+      Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+      Properties:
+        Name: !Ref ALBName
+        Scheme: internal
+        Subnets:
+          - Ref: ALBSubnet1
+          - Ref: ALBSubnet2
+        SecurityGroups:
+          - Ref: ALBSecGrp
+
+    ECSTargetGroup:
+      Type: AWS::ElasticLoadBalancingV2::TargetGroup
+      Properties:
+        Name: !Ref TargetGrpName
+        HealthCheckIntervalSeconds: 30
+        HealthCheckPath: /echo/hello
+        HealthCheckProtocol: HTTPS
+        Matcher:
+          HttpCode: '200'
+        HealthCheckTimeoutSeconds: 5
+        HealthyThresholdCount: 5
+        UnhealthyThresholdCount: 2
+        Protocol: HTTPS
+        Port: 8072
+        VpcId:
+          Ref: VPCID
+
+    ALBListener:
+      Type: AWS::ElasticLoadBalancingV2::Listener
+      Properties:
+        Certificates: 
+          - CertificateArn: arn:aws:acm:us-east-1:181919227580:certificate/563d2dcf-44f0-416d-868c-f98a4370b35d
+        DefaultActions:
+          - Type: forward
+            TargetGroupArn:
+              Ref: ECSTargetGroup
+        LoadBalancerArn:
+            Ref: ApplicationLoadBalancer
+        Port: 443
+        Protocol: HTTPS
+        SslPolicy: ELBSecurityPolicy-2016-08
+
+
+Outputs:
+
+    ALBHostName:
+        Description: 'Application Load Balancer Hostname'
+        Value:
+          !GetAtt ApplicationLoadBalancer.DNSName
+    ECSTargetGroup:
+        Description: 'ECS Target Group'
+        Value: !Ref ECSTargetGroup
+    ApplicationLoadBalancer:
+        Description: 'Application Load Balancer'
+        Value: !Ref ApplicationLoadBalancer
