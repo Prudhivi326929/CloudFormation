@@ -12,9 +12,9 @@ Resources:
    InstanceType: 't3.2xlarge'
    IamInstanceProfile: 'Era-Radagast'
    KeyName: 'EIL_CERT_FULL_US_EAST'
-   SubnetId: subnet-8ee648c7
+   SubnetId: subnet-8ee48c7
    SecurityGroupIds:
-     - sg-0e09a562a870f0a02 
+     - sg-0e09a5a870fa02 
    BlockDeviceMappings: 
    -
     DeviceName: /dev/xvda
@@ -28,11 +28,11 @@ Resources:
       VolumeType: gp2
    Tags:
    - Key: APP_ID
-     Value: 1311
+     Value: 13
    - Key : Billing
-     Value : DataSolutions/ERAIntegrationLayer
+     Value : DataSolutions/EIntegrationLayer
    - Key : COST_CENTER
-     Value : 40144
+     Value : 404
    - Key : Name
      Value: ERA_EIL_PreProductionJenkinsVM	  
    UserData:
